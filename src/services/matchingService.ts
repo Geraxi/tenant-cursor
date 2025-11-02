@@ -225,15 +225,21 @@ export class MatchingService {
     try {
       const { data: likes, error } = await supabase
         .from('likes')
-        .select(`
-          target_id,
-          immobili(*)
-        `)
+        .select('target_id')
         .eq('user_id', tenantId)
         .eq('target_type', 'property');
 
       if (error) throw error;
-      return likes?.map(like => like.immobili).filter(Boolean) || [];
+      if (!likes) return [];
+
+      const propertyIds = likes.map(like => like.target_id);
+      const { data: properties, error: propertiesError } = await supabase
+        .from('immobili')
+        .select('*')
+        .in('id', propertyIds);
+
+      if (propertiesError) throw propertiesError;
+      return properties || [];
     } catch (error) {
       console.error('Error fetching liked properties:', error);
       return [];
@@ -245,15 +251,21 @@ export class MatchingService {
     try {
       const { data: likes, error } = await supabase
         .from('likes')
-        .select(`
-          target_id,
-          utenti!target_id(*)
-        `)
+        .select('target_id')
         .eq('user_id', landlordId)
         .eq('target_type', 'tenant');
 
       if (error) throw error;
-      return likes?.map(like => like.utenti).filter(Boolean) || [];
+      if (!likes) return [];
+
+      const tenantIds = likes.map(like => like.target_id);
+      const { data: tenants, error: tenantsError } = await supabase
+        .from('utenti')
+        .select('*')
+        .in('id', tenantIds);
+
+      if (tenantsError) throw tenantsError;
+      return tenants || [];
     } catch (error) {
       console.error('Error fetching liked tenants:', error);
       return [];
